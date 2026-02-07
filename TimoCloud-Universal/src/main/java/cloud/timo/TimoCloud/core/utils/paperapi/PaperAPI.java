@@ -18,14 +18,14 @@ import java.util.List;
 
 public class PaperAPI {
 
-    public static final String PAPER_API_URL = "https://api.papermc.io/v2/";
+    public static final String PAPER_API_URL = "https://fill.papermc.io/v3/";
 
     public static List<String> getVersions(Project project) {
         String requestUrl = PAPER_API_URL + "projects/" + project.getName();
         List<String> versions = new ArrayList<>();
         try {
             JsonObject json = getJson(requestUrl);
-            json.getAsJsonArray("versions").forEach(jsonElement -> versions.add(jsonElement.getAsString()));
+            json.getAsJsonObject("versions").asMap().forEach((s, jsonElement) -> jsonElement.getAsJsonArray().forEach(jsonElement1 -> versions.add(jsonElement1.getAsString())));
         } catch (IOException ignored) {
         }
         return versions;
@@ -41,16 +41,18 @@ public class PaperAPI {
         FileUtils.copyURLToFile(URI.create(url).toURL(), dest);
     }
 
-    public static String buildDownloadURL(Project project, String version, int build, String fileName) {
-        return PAPER_API_URL + "projects/" + project.getName() + "/versions/" + version + "/builds/" + build + "/downloads/" + fileName;
+    public static String buildDownloadURL(JsonObject build) {
+        return build.getAsJsonObject("downloads").getAsJsonObject("server:default").get("url").getAsString();
+    }
+    public static String getFileName(JsonObject build) {
+        return build.getAsJsonObject("downloads").getAsJsonObject("server:default").get("name").getAsString();
     }
 
     public static JsonObject getLatestBuilds(Project project, String version) {
-        String requestUrl = PAPER_API_URL + "projects/" + project.getName() + "/versions/" + version + "/builds";
+        String requestUrl = PAPER_API_URL + "projects/" + project.getName() + "/versions/" + version + "/builds/latest";
         try {
-            JsonArray builds = getJson(requestUrl).getAsJsonArray("builds");
-            JsonObject latestBuilds = builds.get(builds.size() - 1).getAsJsonObject();
-            return latestBuilds;
+            JsonObject latest = getJson(requestUrl).getAsJsonObject();
+            return latest;
         } catch (IOException e) {
             return null;
         }
@@ -58,7 +60,6 @@ public class PaperAPI {
 
     public enum Project {
         PAPER("paper", Server.class),
-        TRAVERTINE("travertine"),
         WATERFALL("waterfall", Proxy.class),
         VELOCITY("velocity", Proxy.class),
         FOLIA("folia");
